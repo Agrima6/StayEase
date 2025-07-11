@@ -5,6 +5,8 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import { clerkMiddleware } from '@clerk/express'
 import clerkWebhooks from "./controllers/clerkWebHooks.js";
+import userRouter from "./routes/userRoutes.js";
+import hotelRouter from "./routes/hotelRoutes.js";
 
 connectDB()
 
@@ -22,26 +24,12 @@ app.use("/api/clerk", clerkWebhooks);
 
 
 app.get('/', (req, res)=>res.send("API is working !"))
+
+app.use('/api/user', userRouter)
+app.use('/api/hotels', hotelRouter)
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 
-import User from "./models/User.js"; // correct relative path
 
-app.get('/test-insert', async (req, res) => {
-  try {
-    const newUser = new User({
-      _id: "test123",
-      username: "TestUser",
-      email: "test@example.com",
-      image: "https://example.com/image.jpg",
-      role: "user",
-      recentSearchedCities: ["Delhi", "Mumbai"]
-    });
-
-    await newUser.save();
-    res.send("User inserted and MongoDB is working!");
-  } catch (err) {
-    res.status(500).send("Error: " + err.message);
-  }
-});
