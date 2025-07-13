@@ -24,7 +24,7 @@ const UserSchema = new mongoose.Schema({
     },
       recentSearchedCities: [{
         type: String,
-        required: true,
+        default: [],
         
     }],
 }, {timestamps: true});

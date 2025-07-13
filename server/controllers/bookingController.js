@@ -3,6 +3,7 @@
 import Booking from "../models/Booking.js"
 import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
+import stripe from "stripe";
 
 const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
     try {
@@ -82,15 +83,21 @@ export const createBooking = async (req, res) => {
 // api to get all booking for a user
 // GET /api/bookings/user
 
+// GET /api/bookings/user
 export const getUserBookings = async (req, res) => {
     try {
         const user = req.user._id;
-        const bookings = await Booking.find({ user }).populate("room hotel").sort({ createdAt: -1 });
-        res.json({ success: true, message: bookings });
+        const bookings = await Booking.find({ user })
+            .populate("room hotel")
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, bookings }); // ✅ Fixed here
     } catch (error) {
-        res.json({ success: false, message: error.message });
+        res.json({ success: false, message: error.message || "Something went wrong" });
+
     }
-}
+};
+
 
 export const getHotelBookings = async (req, res) => {
     try {
@@ -120,5 +127,45 @@ export const getHotelBookings = async (req, res) => {
 
     } catch (error) {
         res.json({ success: false, message: "Failed to get Hotel Bookings" });
+    }
+}
+
+export const stripePayment = async (req, res)=> {
+    try {
+        const { bookingID } = req.body;
+        const booking = await Booking.findById(bookingId)
+        const roomData = await Room.findById(booking.room).populate('hotel');
+        const totalPrice = booking.totalPrice;
+        const { origin } = req.header;
+
+        const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
+        const  line_items = [
+            {
+                price_data: {
+                    currency: "usd",
+                    product_data:{
+                        name: roomData.hotel.name,
+                    },
+                    unit_amount: totalPrice * 100
+                },
+                quantity: 1,
+            }
+        ]
+
+        // create checkout session
+        const session = await stripeInstance.checkout.sessions.create({
+            line_items,
+            mode: "payment",
+            success_url: `${origin}/loader/my-bookings`,
+            cancel_url: `${origin}/my-bookings`,
+            metadata:{
+                bookingId,
+            }
+        })
+
+        res.json({success: true, url: session.url});
+    } catch (error) {
+        res.json({success: false, message: "Payment Failed"});
+        
     }
 }
