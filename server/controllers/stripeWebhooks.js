@@ -13,21 +13,20 @@ export const stripeWebhooks = async (req, res) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (error) {
+    console.error("Webhook Error:", error.message);
     return res.status(400).send(`Webhook Error: ${error.message}`);
   }
 
-  // ✅ Correct webhook event type
-  if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object;
-    const paymentIntentId = paymentIntent.id;
+  // ✅ THIS is the correct event for Stripe Checkout success
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const bookingId = session.metadata.bookingId;
 
-    const session = await stripeInstance.checkout.sessions.list({
-        payment_intent: paymentIntentId,
+    // ✅ Mark booking as paid
+    await Booking.findByIdAndUpdate(bookingId, {
+      isPaid: true,
+      paymentMethod: "Stripe",
     });
-    const {bookingId} = session.data[0].metadata;
-
-    await Booking.findByIdAndUpdate(bookingId, { isPaid: true, paymentMethod: "Stripe" })
-
   } else {
     console.log("Unhandled event type:", event.type);
   }
